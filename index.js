@@ -18,7 +18,7 @@ app.use(
     origin: (origin, cb) => {
       const whitelist = [
         "https://clinic-management-awn6.onrender.com",
-        "hospital-management-3y1x.onrender.com",
+        "https://hospital-management-3y1x.onrender.com",
         "http://localhost:5173"
       ];
       if (!origin || whitelist.includes(origin)) {
