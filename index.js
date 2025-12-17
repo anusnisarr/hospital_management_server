@@ -22,7 +22,7 @@ app.use(
   cors({
     origin: (origin, cb) => {
       const whitelist = [
-        "https://clinic-management-awn6.onrender.com/auth/refresh",
+        "https://clinic-management-awn6.onrender.com",
         "http://localhost:5173"
       ];
       if (!origin || whitelist.includes(origin)) {
