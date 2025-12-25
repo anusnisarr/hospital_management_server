@@ -20,7 +20,6 @@ const hashRefreshToken = (token) => {
 };
 
 export const refreshToken = async (req, res) => {
-  console.log("refreshToken" , req.cookies);
   try {
     const refreshToken = req.cookies.refreshToken;
     
@@ -110,6 +109,7 @@ export const login = async (req, res) => {
     }
 
     const user = await User.findOne({ email });
+    
     if (!user) {
       return res.status(404).json({ message: "Account not found" });
     }
@@ -126,7 +126,7 @@ export const login = async (req, res) => {
       httpOnly: true,
       secure: false,
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 24 * 60 * 60 * 1000 // 7 days
     });
 
     // res.cookie("accessToken", accessToken, {

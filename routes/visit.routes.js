@@ -7,11 +7,11 @@ const router = express.Router();
 
 router.get('/', authenticateToken ,  getAllVisits)
 router.get('/todayVisits' , authenticateToken, getTodayVisit)
-router.post('/registerPatientAndVisit' , registerPatientAndVisit)
-router.post('/newVisit' , insertNewVisit)
-router.patch('/updateMedicalHistory/:_id' , updateMedicalHistory)
-router.patch('/update' , updateVisitDetails)
-router.delete('/Delete' , deleteAllVisits)
+router.post('/registerPatientAndVisit' , authenticateToken , registerPatientAndVisit)
+router.post('/newVisit' , authenticateToken , insertNewVisit)
+router.patch('/updateMedicalHistory/:_id' ,authenticateToken, updateMedicalHistory)
+router.patch('/update' , authenticateToken , updateVisitDetails)
+router.delete('/Delete' ,authenticateToken , deleteAllVisits)
 
 
 

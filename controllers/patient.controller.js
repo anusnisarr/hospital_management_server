@@ -1,5 +1,5 @@
 import Patient from "../models/patient.models.js"
-import PatientVisit from "../models/visits.modals.js";
+import Visit from "../models/visits.modals.js";
 import {buildSearchQuery} from "../utils/buildSearchQuery.js";
 
 export const getTodayVisit = async (req, res) => {
@@ -14,7 +14,7 @@ export const getTodayVisit = async (req, res) => {
         
         const endOfDay = new Date(new Date().setHours(23, 59, 59, 999));
 
-        const getTodayVisits = await PatientVisit.find({
+        const getTodayVisits = await Visit.find({
         updatedAt: { $gte: startOfDay, $lte: endOfDay }
         }).populate("patient");
 
@@ -63,7 +63,7 @@ export const getAllVisits = async (req, res) => {
     const projection =  columnsName ? columnsName.split(",").join(" "): "";
     
     try {
-        const visits = await PatientVisit.find(filter)
+        const res = await Visit.find(filter)
         .select(projection)
         .populate({path:"patient" , select: projection})
         .skip(skip)
@@ -71,7 +71,7 @@ export const getAllVisits = async (req, res) => {
         .lean().
         sort({ createdAt: -1 });
 
-        const flatData = visits.map(v => ({
+        const flatData = res.map(v => ({
             id: v._id,
             patientId: v.patient._id,
             ...v,
@@ -80,7 +80,7 @@ export const getAllVisits = async (req, res) => {
             patient: undefined
         }));
 
-        const total = await PatientVisit.countDocuments();
+        const total = await res.countDocuments();
 
         res.status(201).json({ data: flatData, total });
 
@@ -124,14 +124,14 @@ export const getAllPatient = async (req, res) => {
 }
 
 export const registerPatientAndVisit = async (req, res) => {
+    
     const {patientData , visitData} = req.body    
-    console.table(visitData)
     
     try {
         const patient = await Patient.create(patientData)
-        const visit = await PatientVisit.create({...visitData , patient: patient._id})
+        const visitResponse = await Visit.create({...visitData , patient: patient._id})
 
-        const patientWithVisit = await visit.populate("patient")        
+        const patientWithVisit = await visitResponse.populate("patient")        
                 
         res.status(201).json(patientWithVisit);        
 
@@ -146,7 +146,7 @@ export const insertNewVisit = async (req, res) => {
     const { patientId , visitData } = req.body || {};
     
     try {
-        const response = await PatientVisit.create({...visitData , patient: patientId})
+        const response = await Visit.create({...visitData , patient: patientId})
         
         const newVisit = await response.populate("patient")
 
@@ -161,11 +161,11 @@ export const insertNewVisit = async (req, res) => {
 }
 
 export const updatePatientInfo = async (req, res) => {
+    
     const { id } = req.params
-    const patientData = req.body    
-
+    const { patientData } = req.body    
     try {
-        const updatedPatient = await Patient.findByIdAndUpdate(id, patientData  , {new: true})
+        const updatedPatient = await Patient.findByIdAndUpdate(id, patientData , {new: true})
 
         res.status(201).json(updatedPatient);
 
@@ -211,7 +211,7 @@ export const updateMedicalHistory = async (req, res) => {
 export const deleteAllVisits = async (req, res) => {
     try {
         const deleteAllPatients = await Patient.deleteMany({});
-        const deleteAllVisits = await PatientVisit.deleteMany({});
+        const deleteAllVisits = await Visit.deleteMany({});
 
         res.status(201).json({deleteAllPatients ,deleteAllVisits });
 
