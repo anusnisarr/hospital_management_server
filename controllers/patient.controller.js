@@ -3,8 +3,6 @@ import Visit from "../models/visits.modals.js";
 import {buildSearchQuery} from "../utils/buildSearchQuery.js";
 
 export const getTodayVisit = async (req, res) => {
-
-    console.log("API req" , req.headers);
     
     try {
 
@@ -63,29 +61,37 @@ export const getAllVisits = async (req, res) => {
     const projection =  columnsName ? columnsName.split(",").join(" "): "";
     
     try {
-        const res = await Visit.find(filter)
-        .select(projection)
-        .populate({path:"patient" , select: projection})
-        .skip(skip)
-        .limit(limit)
-        .lean().
-        sort({ createdAt: -1 });
+        const [data , total ] = await Promise.all([
+            Visit.find(filter)
+                .select(projection)
+                .populate({path:"patient" , select: projection})
+                .skip(skip)
+                .limit(limit)
+                .lean().
+                sort({ createdAt: -1 }),
+            Visit.countDocuments(filter)
+        ])
 
-        const flatData = res.map(v => ({
-            id: v._id,
-            patientId: v.patient._id,
-            ...v,
-            ...v.patient,
-            ...v.patient,
-            patient: undefined
-        }));
-
-        const total = await res.countDocuments();
-
-        res.status(201).json({ data: flatData, total });
+    const flatData = data.map(v => {
+        const { patient, ...visitDetails } = v;
+            return {
+                id: v._id,
+                ...visitDetails,
+                ...(patient || {}),
+                patientId: patient?._id
+            };
+        });
+        
+    res.status(200).json({ 
+            success: true,
+            data: flatData, 
+            total,
+            currentPage: Number(page),
+            totalPages: Math.ceil(total / limit)
+        });
 
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(400).json({success: false , error: error.message });
     }
 
 }
@@ -101,19 +107,22 @@ export const getAllPatient = async (req, res) => {
     const projection =  columnsName ? columnsName.split(",").join(" "): "";
     
     try {
-        const patients = await Patient.find(filter)
+        const data = await Patient.find(filter)
         .select(projection)
         .skip(skip)
         .limit(limit)
         .lean().
         sort({ createdAt: -1 });
 
-    const flatData = patients.map(v => ({
+    const flatData = data.map(v => ({
         id: v._id,
         ...v,
     }));
 
-        const total = await Patient.countDocuments();
+    console.log();
+    
+
+        const total = await data.countDocuments();
 
         res.status(201).json({ data: flatData, total });
 
