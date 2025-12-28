@@ -1,7 +1,7 @@
 import express from 'express';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 
-import { getAllVisits , getTodayVisit , insertNewVisit ,  registerPatientAndVisit , updateMedicalHistory , updateVisitDetails , deleteAllVisits } from "../controllers/patient.controller.js"; 
+import { getAllVisits, getTodayVisit, insertNewVisit, registerPatientAndVisit, updateMedicalHistory, updateVisitDetails, deleteAllVisits } from "../controllers/patient.controller.js"; 
 
 const router = express.Router();
 
@@ -12,6 +12,8 @@ router.post('/newVisit' , authenticateToken , insertNewVisit)
 router.patch('/updateMedicalHistory/:_id' ,authenticateToken, updateMedicalHistory)
 router.patch('/update' , authenticateToken , updateVisitDetails)
 router.delete('/Delete' ,authenticateToken , deleteAllVisits)
+
+
 
 
 

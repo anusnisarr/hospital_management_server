@@ -1,6 +1,6 @@
 import Patient from "../models/patient.models.js"
 import Visit from "../models/visits.modals.js";
-import {buildSearchQuery} from "../utils/buildSearchQuery.js";
+import {visitSearchQuery , patientSearchQuery} from "../utils/buildSearchQuery.js";
 
 export const getTodayVisit = async (req, res) => {
     
@@ -51,86 +51,230 @@ export const searchPatientByPhone = async (req, res) => {
 }
 
 export const getAllVisits = async (req, res) => {
+    const { 
+        search, 
+        page = 1, 
+        pageSize = 50,
+        sortField,
+        sortDirection = 'desc'
+    } = req.query;
 
-    const  {page = 1, limit= 50 , columnsName , search} = req.query   
 
-    const filter = buildSearchQuery(search);
+    const skip = (page - 1) * pageSize;
 
-    const skip = (page - 1) * limit;
-
-    const projection =  columnsName ? columnsName.split(",").join(" "): "";
-    
     try {
-        const [data , total ] = await Promise.all([
-            Visit.find(filter)
-                .select(projection)
-                .populate({path:"patient" , select: projection})
-                .skip(skip)
-                .limit(limit)
-                .lean().
-                sort({ createdAt: -1 }),
-            Visit.countDocuments(filter)
-        ])
+        const pipeline = [];
 
-    const flatData = data.map(v => {
-        const { patient, ...visitDetails } = v;
-            return {
-                id: v._id,
-                ...visitDetails,
-                ...(patient || {}),
-                patientId: patient?._id
-            };
+        // Stage 1: Lookup patient data
+        pipeline.push({
+            $lookup: {
+                from: 'patients',
+                localField: 'patient',
+                foreignField: '_id',
+                as: 'patientData'
+            }
         });
-        
-    res.status(200).json({ 
+
+        // Stage 2: Unwind patient data
+        pipeline.push({
+            $unwind: {
+                path: '$patientData',
+                preserveNullAndEmptyArrays: true
+            }
+        });
+
+        // Stage 3: Search filter
+        if (search && search.trim()) {
+            const searchTerm = search.trim();
+            pipeline.push({
+                $match: {
+                    $or: [visitSearchQuery]
+                }
+            });
+        }
+
+        // Stage 4: Project (flatten) the data
+        pipeline.push({
+            $project: {
+                id: '$_id',
+                tokenNo: 1,
+                registrationTime: 1,
+                registrationDate: 1,
+                appointmentType: 1,
+                priority: 1,
+                status: 1,
+                medicalHistory: 1,
+                createdAt: 1,
+                updatedAt: 1,
+                // Patient fields
+                patientId: '$patientData._id',
+                fullName: '$patientData.fullName',
+                phone: '$patientData.phone',
+                email: '$patientData.email',
+                address: '$patientData.address',
+                age: '$patientData.age',
+                gender: '$patientData.gender',
+                emergencyContact: '$patientData.emergencyContact',
+                emergencyPhone: '$patientData.emergencyPhone',
+            }
+        });
+
+        // Stage 5: Sort
+        const sortObj = {};
+        if (sortField) {
+            sortObj[sortField] = sortDirection === 'asc' ? 1 : -1;
+        } else {
+            sortObj.createdAt = -1;
+        }
+        pipeline.push({ $sort: sortObj });
+
+        // Stage 6: Facet for pagination
+        pipeline.push({
+            $facet: {
+                metadata: [{ $count: 'total' }],
+                data: [
+                    { $skip: skip },
+                    { $limit: parseInt(pageSize) }
+                ]
+            }
+        });
+
+        const result = await Visit.aggregate(pipeline);
+
+        const total = result[0].metadata[0]?.total || 0;
+        const data = result[0].data || [];
+
+        res.status(200).json({
             success: true,
-            data: flatData, 
-            total,
+            data: data,
+            total: total,
             currentPage: Number(page),
-            totalPages: Math.ceil(total / limit)
+            pageSize: parseInt(pageSize),
+            totalPages: Math.ceil(total / pageSize)
         });
 
     } catch (error) {
-        res.status(400).json({success: false , error: error.message });
+        console.error('❌ Aggregation error:', error);
+        res.status(400).json({ success: false, error: error.message });
     }
-
-}
+};
 
 export const getAllPatient = async (req, res) => {
+    const { 
+        search, 
+        page = 1, 
+        pageSize = 10,
+        sortField,
+        sortDirection = 'desc'
+    } = req.query;
 
-    const  {page = 1, limit= 10 , columnsName , search} = req.query    
+    const skip = (page - 1) * pageSize;
 
-    const filter = buildSearchQuery(search);
-
-    const skip = (page - 1) * limit;
-
-    const projection =  columnsName ? columnsName.split(",").join(" "): "";
-    
     try {
-        const data = await Patient.find(filter)
-        .select(projection)
-        .skip(skip)
-        .limit(limit)
-        .lean().
-        sort({ createdAt: -1 });
+        const pipeline = [];
 
-    const flatData = data.map(v => ({
-        id: v._id,
-        ...v,
-    }));
+        // Stage 1: Match (Search filter)
+        if (search && search.trim()) {
+            const searchTerm = search.trim();
+            pipeline.push({
+                $match: {
+                    $or: [patientSearchQuery]
+                }
+            });
+        }
 
-    console.log();
-    
+        // Stage 2: Lookup all visits
+        pipeline.push({
+            $lookup: {
+                from: 'patientvisits',
+                localField: '_id',
+                foreignField: 'patient',
+                as: 'visits'
+            }
+        });
 
-        const total = await data.countDocuments();
+        // Stage 3: Get latest visit details
+        pipeline.push({
+            $addFields: {
+                totalVisits: { $size: '$visits' },
+                latestVisit: {
+                    $arrayElemAt: [
+                        {
+                            $sortArray: {
+                                input: '$visits',
+                                sortBy: { registrationDate: -1 }
+                            }
+                        },
+                        0
+                    ]
+                }
+            }
+        });
 
-        res.status(201).json({ data: flatData, total });
+        // Stage 4: Project final structure
+        pipeline.push({
+            $project: {
+                fullName: 1,
+                phone: 1,
+                email: 1,
+                address: 1,
+                age: 1,
+                gender: 1,
+                emergencyContact: 1,
+                emergencyPhone: 1,
+                totalVisits: 1,
+                lastVisitDate: '$latestVisit.registrationDate',
+                lastVisitStatus: '$latestVisit.status',
+                lastVisitType: '$latestVisit.appointmentType',
+                createdAt: 1,
+                updatedAt: 1
+            }
+        });
+
+        // Stage 5: Sort
+        const sortObj = {};
+        if (sortField) {
+            sortObj[sortField] = sortDirection === 'asc' ? 1 : -1;
+        } else {
+            sortObj.createdAt = -1;
+        }
+        pipeline.push({ $sort: sortObj });
+
+        // Stage 6: Facet for pagination
+        pipeline.push({
+            $facet: {
+                metadata: [{ $count: 'total' }],
+                data: [
+                    { $skip: skip },
+                    { $limit: parseInt(pageSize) }
+                ]
+            }
+        });
+
+        const result = await Patient.aggregate(pipeline);
+
+        const total = result[0].metadata[0]?.total || 0;
+        const data = result[0].data || [];
+
+        console.log('✅ Result:', data, 'Total:', total);
+
+        res.status(200).json({
+            success: true,
+            data: data,
+            total: total,
+            currentPage: Number(page),
+            pageSize: parseInt(pageSize),
+            totalPages: Math.ceil(total / pageSize)
+        });
 
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        console.error('❌ Error:', error);
+        res.status(400).json({ 
+            success: false, 
+            error: error.message 
+        });
     }
-
-}
+};
 
 export const registerPatientAndVisit = async (req, res) => {
     
