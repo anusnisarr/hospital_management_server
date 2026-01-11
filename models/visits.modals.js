@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
-import { VISIT_STATUS , VISIT_PRIORITY } from "../constants/visit.constants";
+import { VISIT_STATUS , VISIT_PRIORITY } from "../constants/visitConstants.js";
+console.log("VISIT_STATUS.PENDING" , VISIT_STATUS.PENDING);
+
 
 const medicalHistorySchema = mongoose.Schema({
 
@@ -26,14 +28,18 @@ const patientVisitSchema = mongoose.Schema({
     appointmentType : {type: String},
     priority : {
         type: String,
-        enum:Object.entries(VISIT_PRIORITY),
+        enum:Object.values(VISIT_PRIORITY),
         default:VISIT_PRIORITY.NORMAL
     },
     status : {
         type: String,
-        enum:Object.entries(VISIT_STATUS),
+        enum:Object.values(VISIT_STATUS),
         default:VISIT_STATUS.PENDING
     },
+    statusHistory: [{
+        status: String,
+        changedAt: Date
+    }],
     medicalHistory : [medicalHistorySchema]
         
 }, { timestamps: true })

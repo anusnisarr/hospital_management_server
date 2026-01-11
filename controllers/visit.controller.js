@@ -228,30 +228,32 @@ export const insertNewVisit = async (req, res) => {
 };
 
 export const updateVisitDetails = async (req, res) => {
-  const { visitId, newStatus } = req.body;
+    
+    const { fields } = req.body;
+    const { _id } = req.params;
 
-  if (!visitId || !newStatus) {
-    return res.status(400).json({ message: "visitId and newStatus are required" });
-  }
-
-  try {
-    const updatedVisit = await Visit.findByIdAndUpdate(
-      visitId,
-      { status: newStatus },
-      { new: true, runValidators: true }
-    );
-
-    if (!updatedVisit) {
-      return res.status(404).json({ message: "Visit not found" });
+    if (!_id) {
+        return res.status(400).json({ message: "Id is required" });
     }
 
-    return res.status(200).json(updatedVisit);
+    try {
+        const updatedVisit = await Visit.findByIdAndUpdate(
+        _id,
+        {...fields},
+        { new: true, runValidators: true }
+        );
 
-  } catch (error) {
-    console.error("Update Visit Error:", error);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
+        if (!updatedVisit) {
+        return res.status(404).json({ message: "Visit not found" });
+        }
+
+        return res.status(200).json(updatedVisit);
+
+    } catch (error) {
+        console.error("Update Visit Error:", error);
+        return res.status(500).json({ message: "Server error" });
+    }
+    };
 
 
 export const updateMedicalHistory = async (req, res) => {
