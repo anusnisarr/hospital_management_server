@@ -35,20 +35,12 @@ export const getAllPatient = async (req, res) => {
         sortDirection = 'desc'
     } = req.query;
 
-    const skip = (page - 1) * pageSize;
+    const currentPage = parseInt(page) || 1;
+    const limit = parseInt(pageSize) || 10;
+    const skip = (currentPage - 1) * limit;
 
     try {
         const pipeline = [];
-
-        // Stage 1: Match (Search filter)
-        if (search && search.trim()) {
-            const searchTerm = search.trim();
-            pipeline.push({
-                $match: {
-                    $or: [patientSearchQuery]
-                }
-            });
-        }
 
         // Stage 2: Lookup all visits
         pipeline.push({
@@ -59,6 +51,17 @@ export const getAllPatient = async (req, res) => {
                 as: 'visits'
             }
         });
+
+        // Stage 1: Match (Search filter)
+        if (search && search.trim()) {
+        const searchTerm = search.trim();
+        const query = patientSearchQuery(searchTerm);
+        
+        if (query.$or && Array.isArray(query.$or) && query.$or.length > 0) {
+            pipeline.push({ $match: query });
+        }
+        }
+
 
         // Stage 3: Get latest visit details
         pipeline.push({
@@ -107,6 +110,9 @@ export const getAllPatient = async (req, res) => {
         }
         pipeline.push({ $sort: sortObj });
 
+        console.log('📊 Pipeline before facet:', JSON.stringify(pipeline, null, 2));
+
+
         // Stage 6: Facet for pagination
         pipeline.push({
             $facet: {
@@ -118,10 +124,10 @@ export const getAllPatient = async (req, res) => {
             }
         });
 
-        const result = await Patient.aggregate(pipeline);
-
-        const total = result[0].metadata[0]?.total || 0;
-        const data = result[0].data || [];
+        const result = await Patient.aggregate(pipeline);   
+        
+        const total = result[0]?.metadata?.[0]?.total || 0;
+        const data = result[0]?.data || [];
 
         res.status(200).json({
             success: true,

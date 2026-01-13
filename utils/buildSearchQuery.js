@@ -15,19 +15,26 @@ export const visitSearchQuery = (search) => {
 export const patientSearchQuery = (search) => {
   if (!search) return {};
 
-  return {
-    $or: [
-      { createdAt: { $regex: search, $options: "i" } },
-      { phone: { $regex: search, $options: "i" } },
-      { fullName: { $regex: search, $options: "i" } },
-      { age: { $regex: search, $options: "i" } },
-      { address: { $regex: search, $options: "i" } },
-      { emergencyContact: { $regex: search, $options: "i" } },
-      { emergencyPhone: { $regex: search, $options: "i" } },
-      { totalVisits: { $regex: search, $options: "i" } },
-      { lastVisitDate: { $regex: search, $options: "i" } },
-      { lastVisitStatus: { $regex: search, $options: "i" } }
-    ]
-  };
-}
+  const regex = { $regex: search, $options: "i" };
+  const conditions = [
+    { phone: regex },
+    { fullName: regex },
+    { address: regex },
+    { emergencyContact: regex },
+    { emergencyPhone: regex },
+    { lastVisitStatus: regex }
+  ];
+
+  const num = Number(search);
+  if (!isNaN(num)) {
+    conditions.push({ age: num }, { totalVisits: num });
+  }
+
+  const date = new Date(search);
+  if (!isNaN(date.getTime())) {
+    conditions.push({ createdAt: date }, { lastVisitDate: date });
+  }
+
+  return { $or: conditions };
+};
 
