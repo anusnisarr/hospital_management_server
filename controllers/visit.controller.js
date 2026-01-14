@@ -1,6 +1,7 @@
 import Patient from "../models/patient.models.js"
 import Visit from "../models/visits.modals.js";
 import { visitSearchQuery } from "../utils/buildSearchQuery.js";
+import { updatePatientInfo } from "./patient.controller.js";
 
 export const getTodayVisit = async (req, res) => {
     const {
@@ -253,8 +254,7 @@ export const updateVisitDetails = async (req, res) => {
         console.error("Update Visit Error:", error);
         return res.status(500).json({ message: "Server error" });
     }
-    };
-
+};
 
 export const updateMedicalHistory = async (req, res) => {
     const id = req.params
@@ -283,7 +283,7 @@ export const deleteAllVisits = async (req, res) => {
 
 };
 
-export const registerPatientAndVisit = async (req, res) => {
+export const registerPatientAndCreateVisit = async (req, res) => {
 
     const { patientData, visitData } = req.body
 
@@ -292,6 +292,23 @@ export const registerPatientAndVisit = async (req, res) => {
         const visitResponse = await Visit.create({ ...visitData, patient: patient._id })
 
         const patientWithVisit = await visitResponse.populate("patient")
+
+        res.status(201).json(patientWithVisit);
+
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+
+};
+
+export const updatePatientAndCreateVisit = async (req, res) => {
+
+    const {patientId, patientData, visitData } = req.body
+
+    try {
+        const patient = await Patient.findByIdAndUpdate(patientId, patientData)
+        const newVisit = await Visit.create({ ...visitData, patient: patient._id })
+        const patientWithVisit = await newVisit.populate("patient")
 
         res.status(201).json(patientWithVisit);
 
