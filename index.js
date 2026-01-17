@@ -70,6 +70,7 @@ app.use('/auth' , AuthRouter)
 
 const startServer = async () => {
     await connectDB()
+    console.clear()
     server.listen(process.env.PORT, () => console.log(`Server Running successful On Port ${process.env.PORT}✅` ))
 };
 

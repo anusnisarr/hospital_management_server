@@ -1,9 +1,13 @@
 import jwt from "jsonwebtoken";
+import { refreshToken } from "../controllers/auth.controller.js";
+import {generateAccessToken} from "../controllers/auth.controller.js";
 
-export const authenticateToken = (req, res, next) => {
+export const authenticateToken = async (req, res, next) => {
+
+  console.log("req.cookies", req.cookies);
 
   const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+  let token = authHeader && authHeader.split(" ")[1];
 
   if (!token) return res.status(401).json({ message: "Access denied" });
 
@@ -12,6 +16,7 @@ export const authenticateToken = (req, res, next) => {
     req.user = user;
     next(); 
   } catch (err) {
-    return res.status(403).json({ err: err, message: "Invalid token" });
+    return res.status(401).json({err, code: "ACCESS_TOKEN_EXPIRED", message: "Token Expired" });
   }
+
 };

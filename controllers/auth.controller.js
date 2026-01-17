@@ -3,9 +3,10 @@ import User from "../models/user.models.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto"
+import { log } from "console";
 
-const generateAccessToken = (user) => {
-  return jwt.sign(user, process.env.JWT_ACCESS_SECRET, { expiresIn: "15m" });
+export const generateAccessToken = (user) => {
+  return jwt.sign(user, process.env.JWT_ACCESS_SECRET, { expiresIn: "1m" });
 };
 
 const generateRefreshToken = (user) => {
@@ -20,22 +21,24 @@ const hashRefreshToken = (token) => {
 };
 
 export const refreshToken = async (req, res) => {
+  
+  const refreshToken = req.cookies.refreshToken;
+  
+
+  if (!refreshToken)
+    return res.status(401).json({ code: "REFRESH_TOKEN_MISSING", message: "No refresh token" });
+
+  const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
   try {
-    const refreshToken = req.cookies.refreshToken;
     
-
-    if (!refreshToken)
-      return res.status(401).json({ message: "No refresh token" });
-
-    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-
     const user = await User.findById(decoded.id);
     if (!user) return res.status(401).json({ message: "User not found" });
 
     const newAccessToken = generateAccessToken({ id: user._id });
-
+  
     return res.status(200).json({
-      message: "Login successful",
+      message: "Authoirzed Successful",
       accessToken: newAccessToken,
       user: {
         id: user._id,
@@ -45,7 +48,7 @@ export const refreshToken = async (req, res) => {
     });
 
   } catch (err) {
-    res.status(403).json({ error: err , message: "Invalid refresh token" });
+    res.status(403).json({ code: "REFRESH_TOKEN_EXPIRED" , error: err , message: "Invalid refresh token" });
   }
 };
 
