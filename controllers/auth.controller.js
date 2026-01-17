@@ -6,7 +6,7 @@ import crypto from "crypto"
 import { log } from "console";
 
 export const generateAccessToken = (user) => {
-  return jwt.sign(user, process.env.JWT_ACCESS_SECRET, { expiresIn: "1m" });
+  return jwt.sign(user, process.env.JWT_ACCESS_SECRET, { expiresIn: "30m" });
 };
 
 const generateRefreshToken = (user) => {
