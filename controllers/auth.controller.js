@@ -2,8 +2,6 @@
 import User from "../models/user.models.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import crypto from "crypto"
-import { log } from "console";
 
 export const generateAccessToken = (user) => {
   return jwt.sign(user, process.env.JWT_ACCESS_SECRET, { expiresIn: "30m" });
@@ -11,13 +9,6 @@ export const generateAccessToken = (user) => {
 
 const generateRefreshToken = (user) => {
   return jwt.sign(user, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
-};
-
-const hashRefreshToken = (token) => {
-  return crypto
-    .createHash("sha256")
-    .update(token)
-    .digest("hex");
 };
 
 export const refreshToken = async (req, res) => {
@@ -142,4 +133,22 @@ export const login = async (req, res) => {
     console.error("LOGIN ERROR:", err);
     res.status(500).json({ message: "Server error while logging in" });
   }
+};
+
+export const logout = async (req, res) => {
+
+  const refreshToken = req.cookies.refreshToken;
+
+  if (!refreshToken) {
+    return res.status(200).json({ message: "No refresh token" });
+  }
+
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  });
+
+  return res.status(200).json({ success: true });
+
 };

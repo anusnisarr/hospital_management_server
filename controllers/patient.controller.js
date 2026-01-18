@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Patient from "../models/patient.models.js"
 import { patientSearchQuery } from "../utils/buildSearchQuery.js";
 
@@ -160,4 +161,99 @@ export const updatePatientInfo = async (req, res) => {
         res.status(400).json({ error: error.message });
     }
 
+};
+
+
+// Get patient with full visit history
+export const getPatientWithHistory = async (req, res) => {
+  try {
+    const { patientId } = req.params;
+
+    // Aggregation pipeline to get patient with visits
+    const pipeline = [
+      // Match patient
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(patientId)
+        }
+      },
+
+      // Lookup visits
+      {
+        $lookup: {
+          from: 'patientvisits',
+          localField: '_id',
+          foreignField: 'patient',
+          as: 'visits'
+        }
+      },
+
+      // Sort visits by date (newest first)
+      {
+        $addFields: {
+          visits: {
+            $sortArray: {
+              input: '$visits',
+              sortBy: { registrationDate: -1 }
+            }
+          }
+        }
+      },
+
+      // Project fields
+      {
+        $project: {
+          // Patient info
+          fullName: 1,
+          phone: 1,
+          email: 1,
+          age: 1,
+          gender: 1,
+          address: 1,
+          emergencyContact: 1,
+          emergencyPhone: 1,
+          createdAt: 1,
+
+          // Visits with details
+          visits: {
+            _id: 1,
+            tokenNo: 1,
+            registrationDate: 1,
+            registrationTime: 1,
+            appointmentType: 1,
+            status: 1,
+            priority: 1,
+            medicalHistory: 1,
+            createdAt: 1
+          },
+
+          // Stats
+          totalVisits: { $size: '$visits' },
+          lastVisit: { $arrayElemAt: ['$visits.registrationDate', 0] }
+        }
+      }
+    ];
+
+    const result = await Patient.aggregate(pipeline);
+
+    if (!result || result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: result[0]
+    });
+
+  } catch (error) {
+    console.error('Error fetching patient:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch patient details',
+      error: error.message
+    });
+  }
 };
