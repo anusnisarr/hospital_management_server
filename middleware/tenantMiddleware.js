@@ -1,12 +1,15 @@
 // middleware/tenantMiddleware.js
 import Tenant from '../models/tenant.models.js';
+import { navigateToRegister } from '../../frontend/src/navigation/NavigationService.js';
 
 export const extractTenant = async (req, res, next) => {
   try {
+
     let tenantSlug = null;
 
     // Method 1: From URL path (/tenant-slug/patients)
     const pathParts = req.path.split('/').filter(Boolean);
+
     if (pathParts.length > 0) {
       // Check if first part is a valid slug
       const potentialSlug = pathParts[0];
@@ -25,6 +28,7 @@ export const extractTenant = async (req, res, next) => {
     }
 
     if (!tenantSlug) {
+      navigateToRegister();
       return res.status(400).json({
         success: false,
         message: 'Tenant not specified'
@@ -58,8 +62,8 @@ export const extractTenant = async (req, res, next) => {
   }
 };
 
-// Ensure user belongs to the tenant
 export const validateTenantAccess = (req, res, next) => {
+  
   if (!req.user || !req.tenant) {
     return res.status(401).json({
       success: false,

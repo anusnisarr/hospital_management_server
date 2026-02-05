@@ -5,12 +5,11 @@ import { extractTenant, validateTenantAccess  } from '../middleware/tenantMiddle
 
 const router = express.Router();
 
-router.use(authenticateToken);
 router.use(extractTenant);
 router.use(validateTenantAccess);
 
 router.get('/details', getTenantDetails);
 router.put('/update', updateTenant);
-router.get('/validate', checkSlugAvailability);
+router.get('/tenant/validate', checkSlugAvailability);
 
 export default router;

@@ -67,7 +67,7 @@ io.on("connection", (socket) => {
 
 app.use('/public' , publicRoutes)
 app.use('/auth' , AuthRouter)
-app.use('/:tenantSlug/tenant', tenantRoutes);
+app.use('/:tenantSlug', tenantRoutes);
 app.use('/:tenantSlug/patients', patientRoutes);
 app.use('/:tenantSlug/visits', visitRoutes);
 
